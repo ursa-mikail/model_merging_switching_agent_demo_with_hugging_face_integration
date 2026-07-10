@@ -1,0 +1,49 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: hf-mergekit-demo-backend:latest
+    container_name: hf-mergekit-demo-backend
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - DATA_DIR=/data
+    ports:
+      # Bound to localhost by default - this demo has no built-in
+      # authentication, so it shouldn't be reachable from the network by
+      # default. If you deliberately want to expose it more broadly (e.g. to
+      # your LAN), override with BACKEND_BIND=0.0.0.0 and add your own
+      # auth/reverse-proxy in front of it first. See CAVEAT.md.
+      #
+      # Exposed directly too, so the API can be hit without going through
+      # the frontend's nginx proxy (handy for debugging with curl).
+      - "${BACKEND_BIND:-127.0.0.1}:${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - model_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: hf-mergekit-demo-frontend:latest
+    container_name: hf-mergekit-demo-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      # Bound to localhost by default - see the backend service's `ports`
+      # comment above. Override with FRONTEND_BIND=0.0.0.0 to expose more
+      # broadly, but only after adding your own auth in front of it.
+      - "${FRONTEND_BIND:-127.0.0.1}:${FRONTEND_PORT:-3000}:80"
+
+volumes:
+  model_data:
+    name: hf-mergekit-demo-model-data

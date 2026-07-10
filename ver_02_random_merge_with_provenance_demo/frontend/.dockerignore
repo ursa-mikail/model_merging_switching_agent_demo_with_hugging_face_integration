@@ -1,0 +1,5 @@
+node_modules
+dist
+.ts-build
+*.tsbuildinfo
+.git
